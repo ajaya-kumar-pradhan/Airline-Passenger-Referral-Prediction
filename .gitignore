@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific exclusions (directories that are separate projects)
+InfoNewsBharat/
+ats-resume-ai/
+book_recommender/
+car-pricing-analytics/
+ecommerce_analytics/
+healthcare_analysis/
+insta-nova/
+instainsight-rapidapi/
+ml_project/
+naukri-job-market-api/
+portfolio-website/
+text-to-speech-app/
+twitter-analytics-api/
+airline_referral/
+artifacts/
+templates/
