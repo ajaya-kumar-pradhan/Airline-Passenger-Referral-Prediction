@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Airline Passenger Referral Prediction — Ajaya Kumar Pradhan</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #06080f;
+    --surface: #0d1220;
+    --card: #111827;
+    --border: #1e2d45;
+    --accent: #2563eb;
+    --accent2: #0ea5e9;
+    --gold: #f59e0b;
+    --green: #10b981;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --faint: #1a2540;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lora', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Grid noise overlay ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── Ambient glow ─── */
+  .glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-1 { width: 600px; height: 600px; background: #2563eb; top: -200px; left: -150px; }
+  .glow-2 { width: 400px; height: 400px; background: #0ea5e9; bottom: 100px; right: -100px; }
+
+  /* ─── Nav ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2.5rem;
+    background: rgba(6,8,15,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .nav-links {
+    display: flex; gap: 2rem;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* ─── Main wrapper ─── */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 8rem 2rem 6rem;
+  }
+
+  /* ─── Hero ─── */
+  .hero {
+    text-align: center;
+    margin-bottom: 5rem;
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeUp 0.9s ease forwards 0.2s;
+  }
+  .hero-tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    border: 1px solid rgba(14,165,233,0.3);
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    margin-bottom: 1.5rem;
+    background: rgba(14,165,233,0.05);
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.4rem, 5vw, 3.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 60%, #2563eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1.2rem;
+  }
+  .hero-sub {
+    font-size: 1.05rem;
+    color: var(--muted);
+    max-width: 560px;
+    margin: 0 auto 2rem;
+    line-height: 1.7;
+    font-style: italic;
+  }
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .badge-blue { color: #60a5fa; border-color: rgba(96,165,250,0.3); background: rgba(96,165,250,0.07); }
+  .badge-green { color: #34d399; border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.07); }
+  .badge-gold { color: #fbbf24; border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.07); }
+  .badge-purple { color: #a78bfa; border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); }
+  .badge-sky { color: #38bdf8; border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.07); }
+
+  .btn-row {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    padding: 0.65rem 1.4rem;
+    border-radius: 6px;
+    text-decoration: none;
+    border: 1px solid;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+  .btn-outline { background: transparent; border-color: var(--border); color: var(--muted); }
+  .btn-outline:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ─── Metrics strip ─── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 4rem;
+    opacity: 0;
+    animation: fadeUp 0.9s ease forwards 0.4s;
+  }
+  .metric-cell {
+    background: var(--surface);
+    padding: 1.6rem 1.2rem;
+    text-align: center;
+    transition: background 0.2s;
+  }
+  .metric-cell:hover { background: var(--faint); }
+  .metric-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--accent2);
+    display: block;
+    margin-bottom: 0.3rem;
+    counter-reset: none;
+  }
+  .metric-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* ─── Sections ─── */
+  section {
+    margin-bottom: 4rem;
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  section.visible {
+    animation: fadeUp 0.7s ease forwards;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 1.2rem;
+    color: #f1f5f9;
+  }
+
+  /* ─── Cards ─── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover { border-color: rgba(37,99,235,0.4); transform: translateY(-2px); }
+
+  /* ─── Workflow ─── */
+  .workflow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .wf-item {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 1rem;
+    position: relative;
+  }
+  .wf-item:not(:last-child) .wf-line {
+    position: absolute;
+    left: 23px;
+    top: 48px;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+  }
+  .wf-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--faint);
+    border: 1px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent2);
+    flex-shrink: 0;
+    margin-top: 2px;
+    position: relative;
+    z-index: 1;
+  }
+  .wf-content { padding-bottom: 2rem; }
+  .wf-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 0.3rem;
+  }
+  .wf-desc {
+    font-size: 0.875rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ─── Model comparison table ─── */
+  .model-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+  }
+  .model-table th {
+    text-align: left;
+    padding: 0.7rem 1rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.65rem;
+  }
+  .model-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid rgba(30,45,69,0.5);
+    color: var(--text);
+  }
+  .model-table tr:last-child td { border-bottom: none; }
+  .model-table tr.best-row td { background: rgba(37,99,235,0.07); }
+  .model-table tr:hover td { background: var(--faint); }
+  .winner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.6rem;
+    color: var(--gold);
+    border: 1px solid rgba(245,158,11,0.3);
+    background: rgba(245,158,11,0.07);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+
+  /* ─── Features grid ─── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  .feat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.1rem;
+    transition: all 0.2s;
+  }
+  .feat-card:hover { border-color: var(--accent2); background: var(--faint); }
+  .feat-icon { font-size: 1.3rem; margin-bottom: 0.5rem; }
+  .feat-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 0.25rem;
+  }
+  .feat-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+  /* ─── Tech stack ─── */
+  .tech-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .tech-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .tech-pill:hover { border-color: var(--accent2); color: var(--accent2); }
+  .tech-pill .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+
+  /* ─── Feature importance bar ─── */
+  .fi-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 60px;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .fi-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text);
+    text-align: right;
+  }
+  .fi-bar-bg {
+    height: 8px;
+    background: var(--faint);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .fi-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0;
+    transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+  }
+  .fi-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* ─── Deployment timeline ─── */
+  .deploy-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+  .deploy-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.1rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .deploy-step::before {
+    content: attr(data-n);
+    position: absolute;
+    top: -10px; right: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: rgba(37,99,235,0.07);
+  }
+  .deploy-step:hover { border-color: var(--accent); background: var(--faint); }
+  .deploy-icon { font-size: 1.2rem; margin-bottom: 0.5rem; }
+  .deploy-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 0.2rem;
+  }
+  .deploy-sub { font-size: 0.72rem; color: var(--muted); }
+
+  /* ─── Code block ─── */
+  .code-block {
+    background: #0a0f1c;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    overflow-x: auto;
+    line-height: 1.8;
+  }
+  .code-block .kw { color: #60a5fa; }
+  .code-block .str { color: #34d399; }
+  .code-block .cm { color: #475569; font-style: italic; }
+  .code-block .fn { color: #f59e0b; }
+
+  /* ─── Dataset columns ─── */
+  .col-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem;
+  }
+  .col-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .col-pill.target { border-color: rgba(245,158,11,0.4); color: var(--gold); background: rgba(245,158,11,0.05); }
+  .col-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .col-pill.target .col-dot { background: var(--gold); }
+
+  /* ─── Footer ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  .footer-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .footer-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f1f5f9;
+  }
+  .footer-links {
+    display: flex; gap: 1.5rem;
+    list-style: none;
+  }
+  .footer-links a {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--accent2); }
+
+  /* ─── Animations ─── */
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── Responsive ─── */
+  @media(max-width:640px) {
+    .metrics { grid-template-columns: repeat(2,1fr); }
+    nav { padding: 0.8rem 1.2rem; }
+    .nav-links { display: none; }
+    main { padding: 7rem 1.2rem 4rem; }
+    .fi-row { grid-template-columns: 110px 1fr 50px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Ambient glows -->
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<!-- Nav -->
+<nav>
+  <span class="nav-logo">ajaya · ml portfolio</span>
+  <ul class="nav-links">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#workflow">Workflow</a></li>
+    <li><a href="#models">Models</a></li>
+    <li><a href="#deployment">Deploy</a></li>
+    <li><a href="#quickstart">Quickstart</a></li>
+  </ul>
+</nav>
+
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-tag">✈ Classification · NLP · Deployment</div>
+    <h1>Airline Passenger<br/>Referral Prediction</h1>
+    <p class="hero-sub">Predicting which passengers are likely to recommend an airline — using ensemble ML, NLP-based sentiment features, and a production-ready Streamlit app.</p>
+    <div class="badge-row">
+      <span class="badge badge-blue">Python</span>
+      <span class="badge badge-green">Scikit-learn</span>
+      <span class="badge badge-gold">XGBoost</span>
+      <span class="badge badge-purple">FastAPI</span>
+      <span class="badge badge-sky">Streamlit</span>
+      <span class="badge badge-green">Joblib</span>
+      <span class="badge badge-blue">NLP · TF-IDF</span>
+      <span class="badge badge-gold">SVM</span>
+      <span class="badge badge-purple">Random Forest</span>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="https://github.com/Ajaya210/Airline-Passenger-Referral-Prediction" target="_blank">
+        ⬡ GitHub Repository
+      </a>
+      <a class="btn btn-outline" href="https://github.com/Ajaya210/Airline-Passenger-Referral-Prediction/blob/main/Airline_Passenger_Referral_Prediction.ipynb" target="_blank">
+        ↗ View Notebook
+      </a>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics" id="metrics">
+    <div class="metric-cell">
+      <span class="metric-val" data-target="95">0</span>
+      <span class="metric-label">Best Accuracy %</span>
+    </div>
+    <div class="metric-cell">
+      <span class="metric-val" data-target="3">0</span>
+      <span class="metric-label">ML Models Trained</span>
+    </div>
+    <div class="metric-cell">
+      <span class="metric-val" data-target="17">0</span>
+      <span class="metric-label">Dataset Features</span>
+    </div>
+    <div class="metric-cell">
+      <span class="metric-val" data-target="100" data-suffix="%">0</span>
+      <span class="metric-label">End-to-End Deploy</span>
+    </div>
+  </div>
+
+  <!-- Overview -->
+  <section id="overview">
+    <div class="section-label">01 — Project Overview</div>
+    <div class="section-title">Why Referral Prediction Matters</div>
+    <div class="card" style="margin-bottom:1.5rem;">
+      <p style="color:var(--muted);line-height:1.8;font-size:0.95rem;">
+        In the fiercely competitive aviation industry, passenger satisfaction and word-of-mouth referrals are key growth levers.
+        This project builds a <strong style="color:var(--text)">binary classification system</strong> that predicts whether a passenger will recommend the airline
+        to their network — enabling airlines to prioritize customer engagement, tailor loyalty programmes, and convert satisfied travellers
+        into brand advocates.
+      </p>
+    </div>
+
+    <!-- Dataset columns -->
+    <div class="section-label" style="margin-top:2rem;">Dataset — 17 Columns</div>
+    <div class="col-grid">
+      <div class="col-pill"><span class="col-dot"></span>airline</div>
+      <div class="col-pill"><span class="col-dot"></span>overall</div>
+      <div class="col-pill"><span class="col-dot"></span>author</div>
+      <div class="col-pill"><span class="col-dot"></span>review_date</div>
+      <div class="col-pill"><span class="col-dot"></span>customer_review</div>
+      <div class="col-pill"><span class="col-dot"></span>aircraft</div>
+      <div class="col-pill"><span class="col-dot"></span>traveller_type</div>
+      <div class="col-pill"><span class="col-dot"></span>cabin</div>
+      <div class="col-pill"><span class="col-dot"></span>route</div>
+      <div class="col-pill"><span class="col-dot"></span>date_flown</div>
+      <div class="col-pill"><span class="col-dot"></span>seat_comfort</div>
+      <div class="col-pill"><span class="col-dot"></span>cabin_service</div>
+      <div class="col-pill"><span class="col-dot"></span>food_bev</div>
+      <div class="col-pill"><span class="col-dot"></span>entertainment</div>
+      <div class="col-pill"><span class="col-dot"></span>ground_service</div>
+      <div class="col-pill"><span class="col-dot"></span>value_for_money</div>
+      <div class="col-pill target"><span class="col-dot"></span>recommended ★ target</div>
+    </div>
+  </section>
+
+  <!-- Workflow -->
+  <section id="workflow">
+    <div class="section-label">02 — Methodology</div>
+    <div class="section-title">End-to-End ML Pipeline</div>
+    <div class="workflow">
+      <div class="wf-item">
+        <div class="wf-line"></div>
+        <div class="wf-num">01</div>
+        <div class="wf-content">
+          <div class="wf-title">Data Collection & Loading</div>
+          <div class="wf-desc">Loaded airline passenger reviews dataset from Excel. Dataset includes multi-airline reviews with ratings across 6 service dimensions and open-text customer reviews.</div>
+        </div>
+      </div>
+      <div class="wf-item">
+        <div class="wf-line"></div>
+        <div class="wf-num">02</div>
+        <div class="wf-content">
+          <div class="wf-title">Data Cleaning & Preprocessing</div>
+          <div class="wf-desc">Handled missing values, removed duplicate rows, parsed date columns, label-encoded categorical variables (traveller_type, cabin) using LabelEncoder.</div>
+        </div>
+      </div>
+      <div class="wf-item">
+        <div class="wf-line"></div>
+        <div class="wf-num">03</div>
+        <div class="wf-content">
+          <div class="wf-title">Exploratory Data Analysis (EDA)</div>
+          <div class="wf-desc">Visualised distributions, correlation heatmaps, class balance, and feature relationships using Matplotlib and Seaborn. Identified ground_service and cabin_service as top predictors.</div>
+        </div>
+      </div>
+      <div class="wf-item">
+        <div class="wf-line"></div>
+        <div class="wf-num">04</div>
+        <div class="wf-content">
+          <div class="wf-title">Feature Engineering & NLP</div>
+          <div class="wf-desc">Applied TF-IDF vectorisation on customer_review text, VIF analysis for multicollinearity, and created engineered interaction features from service ratings.</div>
+        </div>
+      </div>
+      <div class="wf-item">
+        <div class="wf-line"></div>
+        <div class="wf-num">05</div>
+        <div class="wf-content">
+          <div class="wf-title">Model Building & Tuning</div>
+          <div class="wf-desc">Trained Logistic Regression, SVM (RBF kernel), and Random Forest classifiers. Applied GridSearchCV for hyperparameter tuning. Used cross-validation for robust evaluation.</div>
+        </div>
+      </div>
+      <div class="wf-item">
+        <div class="wf-line"></div>
+        <div class="wf-num">06</div>
+        <div class="wf-content">
+          <div class="wf-title">Model Evaluation & Explainability</div>
+          <div class="wf-desc">Compared models on Accuracy, Recall, F1, and AUC-ROC. Applied ELI5 permutation importance to interpret feature contributions. Priority metric: Recall.</div>
+        </div>
+      </div>
+      <div class="wf-item">
+        <div class="wf-line"></div>
+        <div class="wf-num">07</div>
+        <div class="wf-content">
+          <div class="wf-title">Deployment</div>
+          <div class="wf-desc">Best model (SVM) serialised with Joblib. REST API built with FastAPI. Interactive frontend deployed on Streamlit with live user input and real-time prediction.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Models -->
+  <section id="models">
+    <div class="section-label">03 — Model Comparison</div>
+    <div class="section-title">Performance Results</div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:2.5rem;">
+      <table class="model-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Accuracy</th>
+            <th>Recall</th>
+            <th>F1 Score</th>
+            <th>AUC-ROC</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Logistic Regression</td>
+            <td>91%</td>
+            <td>88%</td>
+            <td>89%</td>
+            <td>0.91</td>
+            <td><span class="badge badge-blue">Baseline</span></td>
+          </tr>
+          <tr>
+            <td>Random Forest</td>
+            <td>93%</td>
+            <td>91%</td>
+            <td>92%</td>
+            <td>0.94</td>
+            <td><span class="badge badge-green">Strong</span></td>
+          </tr>
+          <tr class="best-row">
+            <td>
+              SVM (RBF)
+              <span class="winner-badge">★ Best</span>
+            </td>
+            <td>95%</td>
+            <td>94%</td>
+            <td>94%</td>
+            <td>0.96</td>
+            <td><span class="badge badge-gold">Deployed</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Feature Importance -->
+    <div class="section-label">Feature Importance — Random Forest (ELI5 Permutation)</div>
+    <div class="card" id="fi-container">
+      <div class="fi-row"><span class="fi-label">ground_service</span><div class="fi-bar-bg"><div class="fi-bar" data-w="100"></div></div><span class="fi-val">0.0805</span></div>
+      <div class="fi-row"><span class="fi-label">cabin_service</span><div class="fi-bar-bg"><div class="fi-bar" data-w="94"></div></div><span class="fi-val">0.0756</span></div>
+      <div class="fi-row"><span class="fi-label">seat_comfort</span><div class="fi-bar-bg"><div class="fi-bar" data-w="62"></div></div><span class="fi-val">0.0497</span></div>
+      <div class="fi-row"><span class="fi-label">food_bev</span><div class="fi-bar-bg"><div class="fi-bar" data-w="37"></div></div><span class="fi-val">0.0299</span></div>
+      <div class="fi-row"><span class="fi-label">entertainment</span><div class="fi-bar-bg"><div class="fi-bar" data-w="2"></div></div><span class="fi-val">0.0016</span></div>
+      <div class="fi-row"><span class="fi-label">traveller_type</span><div class="fi-bar-bg"><div class="fi-bar" data-w="1"></div></div><span class="fi-val">0.0011</span></div>
+    </div>
+  </section>
+
+  <!-- Deployment -->
+  <section id="deployment">
+    <div class="section-label">04 — Deployment Architecture</div>
+    <div class="section-title">From Notebook to Live App</div>
+    <div class="deploy-steps">
+      <div class="deploy-step" data-n="1">
+        <div class="deploy-icon">🧠</div>
+        <div class="deploy-title">Model Training</div>
+        <div class="deploy-sub">SVM trained & evaluated in Colab</div>
+      </div>
+      <div class="deploy-step" data-n="2">
+        <div class="deploy-icon">💾</div>
+        <div class="deploy-title">Model Serialization</div>
+        <div class="deploy-sub">Saved as <code style="color:var(--accent2)">best_model_svc.joblib</code></div>
+      </div>
+      <div class="deploy-step" data-n="3">
+        <div class="deploy-icon">⚡</div>
+        <div class="deploy-title">FastAPI Backend</div>
+        <div class="deploy-sub">REST API with /predict endpoint</div>
+      </div>
+      <div class="deploy-step" data-n="4">
+        <div class="deploy-icon">🖥️</div>
+        <div class="deploy-title">Streamlit Frontend</div>
+        <div class="deploy-sub">Interactive UI for live prediction</div>
+      </div>
+      <div class="deploy-step" data-n="5">
+        <div class="deploy-icon">🚀</div>
+        <div class="deploy-title">Cloud Deployment</div>
+        <div class="deploy-sub">Hosted on Streamlit Cloud</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section id="tech">
+    <div class="section-label">05 — Technology Stack</div>
+    <div class="section-title">Tools & Libraries</div>
+    <div class="tech-grid">
+      <div class="tech-pill"><span class="dot" style="background:#3b82f6"></span>Python 3.x</div>
+      <div class="tech-pill"><span class="dot" style="background:#f59e0b"></span>Pandas</div>
+      <div class="tech-pill"><span class="dot" style="background:#f59e0b"></span>NumPy</div>
+      <div class="tech-pill"><span class="dot" style="background:#10b981"></span>Scikit-learn</div>
+      <div class="tech-pill"><span class="dot" style="background:#ef4444"></span>XGBoost</div>
+      <div class="tech-pill"><span class="dot" style="background:#8b5cf6"></span>SVM (RBF)</div>
+      <div class="tech-pill"><span class="dot" style="background:#10b981"></span>Random Forest</div>
+      <div class="tech-pill"><span class="dot" style="background:#0ea5e9"></span>TF-IDF · NLP</div>
+      <div class="tech-pill"><span class="dot" style="background:#64748b"></span>ELI5</div>
+      <div class="tech-pill"><span class="dot" style="background:#6366f1"></span>FastAPI</div>
+      <div class="tech-pill"><span class="dot" style="background:#f97316"></span>Streamlit</div>
+      <div class="tech-pill"><span class="dot" style="background:#22d3ee"></span>Joblib / Pickle</div>
+      <div class="tech-pill"><span class="dot" style="background:#84cc16"></span>Matplotlib</div>
+      <div class="tech-pill"><span class="dot" style="background:#06b6d4"></span>Seaborn</div>
+      <div class="tech-pill"><span class="dot" style="background:#a78bfa"></span>GridSearchCV</div>
+      <div class="tech-pill"><span class="dot" style="background:#fb923c"></span>Statsmodels VIF</div>
+    </div>
+  </section>
+
+  <!-- Quickstart -->
+  <section id="quickstart">
+    <div class="section-label">06 — Quickstart</div>
+    <div class="section-title">Run Locally</div>
+    <div class="code-block">
+<span class="cm"># Clone the repository</span>
+<span class="kw">git</span> clone https://github.com/Ajaya210/Airline-Passenger-Referral-Prediction
+<span class="kw">cd</span> Airline-Passenger-Referral-Prediction
+
+<span class="cm"># Install dependencies</span>
+<span class="kw">pip</span> install -r requirements.txt
+
+<span class="cm"># Run FastAPI backend</span>
+<span class="kw">uvicorn</span> app.main:<span class="fn">app</span> --reload
+
+<span class="cm"># Launch Streamlit frontend (new terminal)</span>
+<span class="kw">streamlit</span> run streamlit_app.py
+    </div>
+
+    <!-- Features -->
+    <div style="margin-top:2.5rem;">
+      <div class="section-label">What This App Can Do</div>
+      <div class="features-grid">
+        <div class="feat-card">
+          <div class="feat-icon">🎯</div>
+          <div class="feat-name">Live Prediction</div>
+          <div class="feat-desc">Enter passenger review & ratings to get instant referral prediction</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon">📊</div>
+          <div class="feat-name">Confidence Score</div>
+          <div class="feat-desc">Model outputs probability alongside binary Yes/No prediction</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon">🔍</div>
+          <div class="feat-name">Feature Insights</div>
+          <div class="feat-desc">Permutation importance shows which factors drive the recommendation</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon">🌐</div>
+          <div class="feat-name">REST API</div>
+          <div class="feat-desc">FastAPI /predict endpoint ready for enterprise integration</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Conclusion -->
+  <section id="conclusion">
+    <div class="section-label">07 — Conclusion</div>
+    <div class="section-title">Key Takeaways</div>
+    <div class="card">
+      <p style="color:var(--muted);line-height:1.9;font-size:0.93rem;font-style:italic;">
+        Across Logistic Regression, Random Forest, and SVM, the <strong style="color:var(--text)">SVM classifier</strong> emerged as the best performer —
+        delivering the highest accuracy and recall. Ground service and cabin service were the strongest predictors of passenger advocacy.
+        The deployed Streamlit application bridges the gap between a trained model and real-world business utility, enabling airline operations
+        teams to act on predictive signals in real time.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-name">Ajaya Kumar Pradhan</div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:0.2rem;">Data Analyst · Power BI Developer · ML Engineer</div>
+    </div>
+    <ul class="footer-links">
+      <li><a href="https://github.com/ajayaconnect" target="_blank">GitHub ↗</a></li>
+      <li><a href="https://github.com/Ajaya210/Airline-Passenger-Referral-Prediction" target="_blank">Project Repo ↗</a></li>
+      <li><a href="https://linkedin.com/in/" target="_blank">LinkedIn ↗</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+  // ── Counter animation ──────────────────────────────────────
+  function animateCounters() {
+    document.querySelectorAll('.metric-val[data-target]').forEach(el => {
+      const target = parseInt(el.dataset.target);
+      const suffix = el.dataset.suffix || '';
+      let current = 0;
+      const step = Math.ceil(target / 60);
+      const timer = setInterval(() => {
+        current = Math.min(current + step, target);
+        el.textContent = current + suffix;
+        if (current >= target) clearInterval(timer);
+      }, 22);
+    });
+  }
+
+  // ── Intersection Observer for sections ────────────────────
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+
+        // Trigger feature importance bars
+        if (entry.target.querySelector('.fi-bar')) {
+          setTimeout(() => {
+            entry.target.querySelectorAll('.fi-bar').forEach(bar => {
+              bar.style.width = bar.dataset.w + '%';
+            });
+          }, 200);
+        }
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('section').forEach(s => observer.observe(s));
+
+  // ── Metrics counter trigger ────────────────────────────────
+  const metricsObs = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      animateCounters();
+      metricsObs.disconnect();
+    }
+  }, { threshold: 0.3 });
+  metricsObs.observe(document.getElementById('metrics'));
+
+  // ── Smooth active nav link ─────────────────────────────────
+  const sections = document.querySelectorAll('section[id], div.hero');
+  const navLinks = document.querySelectorAll('.nav-links a');
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 120) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.style.color = a.getAttribute('href') === '#' + current
+        ? 'var(--accent2)' : 'var(--muted)';
+    });
+  });
+</script>
+</body>
+</html>
