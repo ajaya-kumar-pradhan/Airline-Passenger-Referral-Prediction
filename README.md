@@ -1,4 +1,4 @@
-# ✈️ SkyAdvocate: Airline Passenger Referral Prediction Engine
+# ✈️ Airline Passenger Referral Prediction Engine
 
 > **Predicting who will recommend your airline — before they leave the gate.**
 
@@ -18,7 +18,7 @@
 
 ## 📌 Overview
 
-**SkyAdvocate** is a production-style passenger experience analytics system that predicts whether a traveller will recommend an airline to others — based on their in-flight service ratings.
+**Airline Passenger Referral Prediction System** is a production-style passenger experience analytics system that predicts whether a traveller will recommend an airline to others — based on their in-flight service ratings.
 
 **The Business Problem:** In aviation, a single Promoter drives 3–5 additional bookings through word-of-mouth. A Detractor costs even more through negative reviews and social media. Airlines invest heavily in service improvements but often don't know *which* service dimension actually moves the referral needle — cabin crew, seat comfort, food, or something else entirely.
 
